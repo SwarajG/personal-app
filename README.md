@@ -1,8 +1,61 @@
-Welcome to your new TanStack app! 
+# Personal Diary Monorepo
+
+This is a monorepo setup using Turborepo for managing a Personal Diary application with separate frontend and backend applications.
+
+## Project Structure
+
+```
+personal-diary/
+├── apps/
+│   ├── web/          # Frontend React application (Vite)
+│   └── backend/      # Backend Node.js/Express API
+├── packages/         # Shared packages (future)
+├── turbo.json        # Turborepo configuration
+└── pnpm-workspace.yaml
+```
 
 # Getting Started
 
-To run this application:
+## Prerequisites
+
+- Node.js 18+ 
+- pnpm 9+
+
+## Installation
+
+Install all dependencies across the monorepo:
+
+```bash
+pnpm install
+```
+
+## Development
+
+Run all apps in development mode:
+
+```bash
+pnpm dev
+```
+
+This will start:
+- Frontend (web) on http://localhost:3000
+- Backend (API) on http://localhost:4000
+
+### Running Individual Apps
+
+You can also run individual apps using filters:
+
+```bash
+# Run only the web app
+pnpm --filter @personal-diary/web dev
+
+# Run only the backend
+pnpm --filter @personal-diary/backend dev
+```
+
+# Building For Production
+
+Build all apps:
 
 ```bash
 pnpm install
@@ -11,11 +64,39 @@ pnpm start
 
 # Building For Production
 
-To build this application for production:
+Build all apps:
 
 ```bash
 pnpm build
 ```
+
+Build a specific app:
+
+```bash
+pnpm --filter @personal-diary/web build
+pnpm --filter @personal-diary/backend build
+```
+
+## Apps
+
+### Web (`apps/web`)
+
+The frontend application built with:
+- React 19
+- Vite
+- TypeScript
+- TailwindCSS
+- Radix UI
+- React Router (TanStack)
+- Redux Toolkit
+
+### Backend (`apps/backend`)
+
+The backend API built with:
+- Node.js
+- Express
+- TypeScript
+- CORS support
 
 ## Testing
 
@@ -32,16 +113,19 @@ This project uses [Tailwind CSS](https://tailwindcss.com/) for styling.
 
 ## Linting & Formatting
 
-
 This project uses [eslint](https://eslint.org/) and [prettier](https://prettier.io/) for linting and formatting. Eslint is configured using [tanstack/eslint-config](https://tanstack.com/config/latest/docs/eslint). The following scripts are available:
 
 ```bash
 pnpm lint
-pnpm format
 pnpm check
+pnpm check-types
 ```
 
+## Turborepo Features
 
+- **Caching**: Turborepo caches build outputs and task results to speed up subsequent runs
+- **Parallel execution**: Tasks run in parallel across workspaces when possible
+- **Dependency awareness**: Turborepo understands workspace dependencies and runs tasks in the correct order
 
 ## Routing
 This project uses [TanStack Router](https://tanstack.com/router). The initial setup is a code based router. Which means that the routes are defined in code (in the `./src/main.tsx` file). If you like you can also use a file based routing setup by following the [File Based Routing](https://tanstack.com/router/latest/docs/framework/react/guide/file-based-routing) guide.
