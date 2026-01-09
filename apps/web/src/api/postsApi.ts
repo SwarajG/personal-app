@@ -1,8 +1,9 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
 
 interface CreatePostRequest {
+  title: string
   content: string
-  timestamp: string
+  date: string
 }
 
 interface CreatePostResponse {
@@ -11,9 +12,17 @@ interface CreatePostResponse {
   id?: string
 }
 
+interface GenerateTitleRequest {
+  content: string
+}
+
+interface GenerateTitleResponse {
+  title: string
+}
+
 export const postsApi = createApi({
   reducerPath: 'postsApi',
-  baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
+  baseQuery: fetchBaseQuery({ baseUrl: 'http://localhost:4000/api' }),
   tagTypes: ['Posts'],
   endpoints: (builder) => ({
     createPost: builder.mutation<CreatePostResponse, CreatePostRequest>({
@@ -34,7 +43,14 @@ export const postsApi = createApi({
         message: 'Post saved successfully!',
       }),
     }),
+    generateTitle: builder.mutation<GenerateTitleResponse, GenerateTitleRequest>({
+      query: (data) => ({
+        url: '/ai/generate-title',
+        method: 'POST',
+        body: data,
+      }),
+    }),
   }),
 })
 
-export const { useCreatePostMutation } = postsApi
+export const { useCreatePostMutation, useGenerateTitleMutation } = postsApi
