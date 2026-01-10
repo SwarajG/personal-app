@@ -33,6 +33,36 @@ app.get('/api/posts', async (_req: Request, res: Response) => {
   }
 });
 
+// Get posts by date
+app.get('/api/posts/date/:date', async (req: Request, res: Response) => {
+  try {
+    const { date } = req.params;
+    const targetDate = new Date(date);
+    
+    // Set to start and end of day for the query
+    const startOfDay = new Date(targetDate);
+    startOfDay.setHours(0, 0, 0, 0);
+    
+    const endOfDay = new Date(targetDate);
+    endOfDay.setHours(23, 59, 59, 999);
+    
+    const posts = await prisma.post.findMany({
+      where: {
+        date: {
+          gte: startOfDay,
+          lte: endOfDay,
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    
+    res.json(posts);
+  } catch (error) {
+    console.error('Error fetching posts by date:', error);
+    res.status(500).json({ error: 'Failed to fetch posts' });
+  }
+});
+
 // Get a single post by ID
 app.get('/api/posts/:id', async (req: Request, res: Response) => {
   try {

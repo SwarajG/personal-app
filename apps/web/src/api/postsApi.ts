@@ -20,6 +20,17 @@ interface GenerateTitleResponse {
   title: string
 }
 
+interface Post {
+  id: string
+  title: string
+  content: string
+  date: string
+  mood?: string
+  tags: Array<string>
+  createdAt: string
+  updatedAt: string
+}
+
 export const postsApi = createApi({
   reducerPath: 'postsApi',
   baseQuery: fetchBaseQuery({ baseUrl: 'http://localhost:4000/api' }),
@@ -50,7 +61,11 @@ export const postsApi = createApi({
         body: data,
       }),
     }),
+    getPostsByDate: builder.query<Post[], string>({
+      query: (date) => `/posts/date/${date}`,
+      providesTags: ['Posts'],
+    }),
   }),
 })
 
-export const { useCreatePostMutation, useGenerateTitleMutation } = postsApi
+export const { useCreatePostMutation, useGenerateTitleMutation, useGetPostsByDateQuery } = postsApi

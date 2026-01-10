@@ -1,4 +1,5 @@
 import { LogOut, Moon, Settings, Sun, User } from 'lucide-react'
+import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -14,11 +15,16 @@ import { useTheme } from '@/components/ThemeProvider'
 import CalendarView from '@/components/CalendarView'
 
 interface LayoutProps {
-  children: ReactNode
+  children: ReactNode | ((selectedDate: Date | null) => ReactNode)
 }
 
 export default function Layout({ children }: LayoutProps) {
   const { theme, setTheme } = useTheme()
+  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date())
+
+  const handleDateSelect = (date: Date | undefined) => {
+    setSelectedDate(date ?? null)
+  }
 
   return (
     <div className="flex h-screen w-full flex-col overflow-hidden">
@@ -79,12 +85,12 @@ export default function Layout({ children }: LayoutProps) {
       <div className="flex flex-1 overflow-hidden">
         {/* Left Sidebar */}
         <aside className="w-80 border-r bg-background overflow-auto">
-          <CalendarView onDateSelect={(date) => console.log('Selected date:', date)} />
+          <CalendarView onDateSelect={handleDateSelect} />
         </aside>
 
         {/* Page Content */}
         <main className="flex-1 overflow-auto p-6">
-          {children}
+          {typeof children === 'function' ? children(selectedDate) : children}
         </main>
       </div>
     </div>
