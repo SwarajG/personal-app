@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { prisma } from './lib/prisma.js';
 import { generatePostTitle } from './helpers/aiHelper.js';
+import { triggerMonthlyDigest } from './helpers/queueHelper.js';
 
 dotenv.config();
 
@@ -146,6 +147,118 @@ app.put('/api/posts/:id', async (req: Request, res: Response) => {
 });
 
 // Delete a post
+app.delete('/api/posts/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    
+    await prisma.post.delete({
+      where: { id },
+    });
+    
+    res.status(204).send();
+  } catch (error) {
+    console.error('Error deleting post:', error);
+    res.status(500).json({ error: 'Failed to delete post' });
+  }
+});
+
+// Save monthly summary
+app.post('/api/monthly-summaries', async (req: Request, res: Response) => {
+  try {
+    const { userId, month, year, summary, generatedAt } = req.body;
+    
+    if (!userId || !month || !year || !summary) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+    
+    const monthlySummary = await prisma.monthlySummary.upsert({
+      where: {
+        userId_month_year: {
+          userId,
+          month,
+          year,
+        },
+      },
+      update: {
+        summary,
+        generatedAt: new Date(generatedAt),
+      },
+      create: {
+        userId,
+        month,
+        year,
+        summary,
+        generatedAt: new Date(generatedAt),
+      },
+    });
+    
+    res.status(201).json(monthlySummary);
+  } catch (error) {
+    console.error('Error saving monthly summary:', error);
+    res.status(500).json({ error: 'Failed to save monthly summary' });
+  }
+});
+
+// Get monthly summary
+app.get('/api/monthly-summaries/:userId/:year/:month', async (req: Request, res: Response) => {
+  try {
+    const { userId, year, month } = req.params;
+    
+    const summary = await prisma.monthlySummary.findUnique({
+      where: {
+        userId_month_year: {
+          userId,
+          month: parseInt(month),
+          year: parseInt(year),
+        },
+      },
+    });
+    
+    if (!summary) {
+      return res.status(404).json({ error: 'Monthly summary not found' });
+    }
+    
+    res.json(summary);
+  } catch (error) {
+    console.error('Error fetching monthly summary:', error);
+    res.status(500).json({ error: 'Failed to fetch monthly summary' });
+  }
+});
+
+// Trigger monthly digest generation
+app.post('/api/monthly-summaries/trigger', async (req: Request, res: Response) => {
+  try {
+    const { userId, month, year } = req.body;
+    
+    if (!userId || !month || !year) {
+      return res.status(400).json({ error: 'Missing required fields: userId, month, year' });
+    }
+    
+    // Validate month and year
+    if (month < 1 || month > 12) {
+      return res.status(400).json({ error: 'Month must be between 1 and 12' });
+    }
+    
+    if (year < 2000 || year > 2100) {
+      return res.status(400).json({ error: 'Invalid year' });
+    }
+    
+    // Trigger the background job
+    await triggerMonthlyDigest(userId, month, year);
+    
+    res.json({ 
+      message: 'Monthly digest job triggered successfully',
+      userId,
+      month,
+      year
+    });
+  } catch (error) {
+    console.error('Error triggering monthly digest:', error);
+    res.status(500).json({ error: 'Failed to trigger monthly digest' });
+  }
+});
+
+// Graceful shutdown
 app.delete('/api/posts/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;

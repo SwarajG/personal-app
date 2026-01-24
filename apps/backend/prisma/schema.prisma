@@ -21,3 +21,18 @@ model Post {
 
   @@index([date])
 }
+
+model MonthlySummary {
+  id          String   @id @default(cuid())
+  userId      String
+  month       Int
+  year        Int
+  summary     String   @db.Text
+  generatedAt DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, month, year])
+  @@index([userId])
+  @@index([year, month])
+}

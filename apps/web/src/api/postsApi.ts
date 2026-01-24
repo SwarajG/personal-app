@@ -31,6 +31,19 @@ interface Post {
   updatedAt: string
 }
 
+interface TriggerMonthlySummaryRequest {
+  userId: string
+  month: number
+  year: number
+}
+
+interface TriggerMonthlySummaryResponse {
+  message: string
+  userId: string
+  month: number
+  year: number
+}
+
 export const postsApi = createApi({
   reducerPath: 'postsApi',
   baseQuery: fetchBaseQuery({ baseUrl: 'http://localhost:4000/api' }),
@@ -65,7 +78,19 @@ export const postsApi = createApi({
       query: (date) => `/posts/date/${date}`,
       providesTags: ['Posts'],
     }),
+    triggerMonthlySummary: builder.mutation<TriggerMonthlySummaryResponse, TriggerMonthlySummaryRequest>({
+      query: (data) => ({
+        url: '/monthly-summaries/trigger',
+        method: 'POST',
+        body: data,
+      }),
+    }),
   }),
 })
 
-export const { useCreatePostMutation, useGenerateTitleMutation, useGetPostsByDateQuery } = postsApi
+export const { 
+  useCreatePostMutation, 
+  useGenerateTitleMutation, 
+  useGetPostsByDateQuery,
+  useTriggerMonthlySummaryMutation 
+} = postsApi

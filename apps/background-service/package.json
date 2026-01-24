@@ -1,0 +1,25 @@
+{
+  "name": "@personal-diary/background-service",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@google/genai": "^1.35.0",
+    "axios": "^1.7.9",
+    "bull": "^4.16.3",
+    "dotenv": "^16.6.1",
+    "redis": "^4.7.0"
+  },
+  "devDependencies": {
+    "@types/bull": "^4.10.0",
+    "@types/node": "^22.19.3",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}

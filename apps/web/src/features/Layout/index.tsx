@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useTheme } from '@/components/ThemeProvider'
 import CalendarView from '@/components/CalendarView'
+import MonthlySummaryTrigger from '@/components/MonthlySummaryTrigger'
 
 interface LayoutProps {
   children: ReactNode | ((selectedDate: Date | null) => ReactNode)
@@ -40,6 +41,9 @@ export default function Layout({ children }: LayoutProps) {
 
         {/* Right side: Theme Toggle + Profile Menu */}
         <div className="flex items-center gap-3">
+          {/* Monthly Summary Trigger */}
+          <MonthlySummaryTrigger />
+          
           {/* Theme Toggle */}
           <Button
             variant="ghost"
