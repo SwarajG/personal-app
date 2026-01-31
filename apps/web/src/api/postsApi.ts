@@ -88,6 +88,13 @@ export const postsApi = createApi({
         body: data,
       }),
     }),
+    deletePost: builder.mutation<void, string>({
+      query: (id) => ({
+        url: `/posts/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Posts'],
+    }),
   }),
 })
 
@@ -95,5 +102,6 @@ export const {
   useCreatePostMutation, 
   useGenerateTitleMutation, 
   useGetPostsByDateQuery,
-  useTriggerMonthlySummaryMutation 
+  useTriggerMonthlySummaryMutation,
+  useDeletePostMutation 
 } = postsApi

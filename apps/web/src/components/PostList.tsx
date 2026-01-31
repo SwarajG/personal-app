@@ -1,4 +1,17 @@
 import { format } from 'date-fns'
+import { Trash2 } from 'lucide-react'
+import { useState } from 'react'
+import { toast } from 'sonner'
+import { useDeletePostMutation } from '../api/postsApi'
+import { Button } from './ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from './ui/dialog'
 
 interface Post {
   id: string
@@ -20,6 +33,20 @@ interface PostListProps {
 
 export default function PostList({ posts, selectedDate, isLoading, isError }: PostListProps) {
   const formattedDate = format(selectedDate, 'MMMM d, yyyy')
+  const [deletePost, { isLoading: isDeleting }] = useDeletePostMutation()
+  const [postToDelete, setPostToDelete] = useState<string | null>(null)
+
+  const handleDelete = async () => {
+    if (!postToDelete) return
+
+    try {
+      await deletePost(postToDelete).unwrap()
+      toast.success('Post deleted successfully')
+      setPostToDelete(null)
+    } catch (error) {
+      toast.error('Failed to delete post. Please try again.')
+    }
+  }
 
   if (isLoading) {
     return (
@@ -62,9 +89,20 @@ export default function PostList({ posts, selectedDate, isLoading, isError }: Po
             <div className="space-y-3">
               <div className="flex items-start justify-between">
                 <h3 className="text-xl font-semibold">{post.title}</h3>
-                <time className="text-sm text-muted-foreground">
-                  {format(new Date(post.createdAt), 'h:mm a')}
-                </time>
+                <div className="flex items-center gap-2">
+                  <time className="text-sm text-muted-foreground">
+                    {format(new Date(post.createdAt), 'h:mm a')}
+                  </time>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                    onClick={() => setPostToDelete(post.id)}
+                    title="Delete post"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
               
               <div
@@ -88,6 +126,33 @@ export default function PostList({ posts, selectedDate, isLoading, isError }: Po
           </article>
         ))}
       </div>
+
+      <Dialog open={!!postToDelete} onOpenChange={() => setPostToDelete(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Post</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this post? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setPostToDelete(null)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

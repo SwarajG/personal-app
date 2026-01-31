@@ -85,7 +85,10 @@ router.post('/login', (req: Request, res: Response, next: NextFunction) => {
 });
 
 // Google OAuth
-router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+router.get('/google', passport.authenticate('google', { 
+  scope: ['profile', 'email'],
+  prompt: 'select_account'
+}));
 
 // Google OAuth callback
 router.get(
@@ -103,7 +106,22 @@ router.post('/logout', (req: Request, res: Response) => {
     if (err) {
       return res.status(500).json({ error: 'Failed to log out' });
     }
-    res.json({ message: 'Logged out successfully' });
+    
+    // Destroy the session
+    req.session.destroy((destroyErr) => {
+      if (destroyErr) {
+        console.error('Session destroy error:', destroyErr);
+      }
+      
+      // Clear the session cookie
+      res.clearCookie('connect.sid', {
+        path: '/',
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+      });
+      
+      res.json({ message: 'Logged out successfully' });
+    });
   });
 });
 

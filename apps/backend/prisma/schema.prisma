@@ -20,6 +20,8 @@ model User {
   updatedAt      DateTime         @updatedAt
   posts          Post[]
   monthlySummaries MonthlySummary[]
+  people         Person[]         // People added by this user
+  addedByUsers   Person[]         @relation("AddedPerson")
 
   @@index([email])
   @@index([googleId])
@@ -55,4 +57,19 @@ model MonthlySummary {
   @@unique([userId, month, year])
   @@index([userId])
   @@index([year, month])
+}
+
+model Person {
+  id          String   @id @default(cuid())
+  userId      String   // The user who added this person
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  addedUserId String   // The user who was added to the people list
+  addedUser   User     @relation("AddedPerson", fields: [addedUserId], references: [id], onDelete: Cascade)
+  alias       String   // The alias/nickname for this person
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, addedUserId])
+  @@index([userId])
+  @@index([addedUserId])
 }

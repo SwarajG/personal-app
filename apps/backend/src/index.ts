@@ -433,6 +433,159 @@ process.on('SIGTERM', async () => {
   process.exit(0);
 });
 
+// Search users by email prefix
+app.get('/api/users/search', isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    const { q } = req.query;
+    const userId = (req.user as any).id;
+    
+    if (!q || typeof q !== 'string' || q.length < 2) {
+      return res.json([]);
+    }
+    
+    const users = await prisma.user.findMany({
+      where: {
+        email: {
+          startsWith: q.toLowerCase(),
+          mode: 'insensitive',
+        },
+        id: {
+          not: userId, // Exclude current user
+        },
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        avatar: true,
+      },
+      take: 10,
+    });
+    
+    res.json(users);
+  } catch (error) {
+    console.error('Error searching users:', error);
+    res.status(500).json({ error: 'Failed to search users' });
+  }
+});
+
+// Get user's people list
+app.get('/api/people', isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    const userId = (req.user as any).id;
+    
+    const people = await prisma.person.findMany({
+      where: { userId },
+      include: {
+        addedUser: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            avatar: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    
+    res.json(people);
+  } catch (error) {
+    console.error('Error fetching people:', error);
+    res.status(500).json({ error: 'Failed to fetch people' });
+  }
+});
+
+// Add a person to user's people list
+app.post('/api/people', isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    const userId = (req.user as any).id;
+    const { addedUserId, alias } = req.body;
+    
+    if (!addedUserId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+    
+    // Check if the user exists
+    const userToAdd = await prisma.user.findUnique({
+      where: { id: addedUserId },
+    });
+    
+    if (!userToAdd) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Check if already added
+    const existing = await prisma.person.findUnique({
+      where: {
+        userId_addedUserId: {
+          userId,
+          addedUserId,
+        },
+      },
+    });
+    
+    if (existing) {
+      return res.status(400).json({ error: 'Person already in your list' });
+    }
+    
+    // Determine alias
+    const finalAlias = alias || userToAdd.name?.split(' ')[0] || userToAdd.email.split('@')[0];
+    
+    const person = await prisma.person.create({
+      data: {
+        userId,
+        addedUserId,
+        alias: finalAlias,
+      },
+      include: {
+        addedUser: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            avatar: true,
+          },
+        },
+      },
+    });
+    
+    res.status(201).json(person);
+  } catch (error) {
+    console.error('Error adding person:', error);
+    res.status(500).json({ error: 'Failed to add person' });
+  }
+});
+
+// Remove a person from user's people list
+app.delete('/api/people/:id', isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userId = (req.user as any).id;
+    
+    const person = await prisma.person.findUnique({
+      where: { id },
+    });
+    
+    if (!person) {
+      return res.status(404).json({ error: 'Person not found' });
+    }
+    
+    if (person.userId !== userId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    
+    await prisma.person.delete({
+      where: { id },
+    });
+    
+    res.status(204).send();
+  } catch (error) {
+    console.error('Error removing person:', error);
+    res.status(500).json({ error: 'Failed to remove person' });
+  }
+});
+
 // Connect to Redis and start server
 async function startServer() {
   try {

@@ -15,10 +15,13 @@ import reportWebVitals from './reportWebVitals.ts'
 import { store } from './store'
 import { ThemeProvider } from './components/ThemeProvider'
 
-import App from './App.tsx'
 import Dashboard from './features/Dashboard/index.tsx'
 import Login from './pages/Login.tsx'
 import Signup from './pages/Signup.tsx'
+import AllPosts from './pages/AllPosts.tsx'
+import MyPeople from './pages/MyPeople.tsx'
+import Settings from './pages/Settings.tsx'
+import Profile from './pages/Profile.tsx'
 import ProtectedRoute from './components/ProtectedRoute.tsx'
 import Layout from './features/Layout/index.tsx'
 import { Toaster } from '@/components/ui/sonner'
@@ -61,7 +64,55 @@ const dashboardRoute = createRoute({
   path: '/dashboard',
   component: () => (
     <ProtectedRoute>
-      <Dashboard />
+        <Dashboard />
+    </ProtectedRoute>
+  ),
+})
+
+const allPostsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/all-posts',
+  component: () => (
+    <ProtectedRoute>
+      <Layout>
+        <AllPosts />
+      </Layout>
+    </ProtectedRoute>
+  ),
+})
+
+const myPeopleRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/my-people',
+  component: () => (
+    <ProtectedRoute>
+      <Layout>
+        <MyPeople />
+      </Layout>
+    </ProtectedRoute>
+  ),
+})
+
+const settingsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/settings',
+  component: () => (
+    <ProtectedRoute>
+      <Layout>
+        <Settings />
+      </Layout>
+    </ProtectedRoute>
+  ),
+})
+
+const profileRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/profile',
+  component: () => (
+    <ProtectedRoute>
+      <Layout>
+        <Profile />
+      </Layout>
     </ProtectedRoute>
   ),
 })
@@ -71,6 +122,10 @@ const routeTree = rootRoute.addChildren([
   signupRoute,
   indexRoute,
   dashboardRoute,
+  allPostsRoute,
+  myPeopleRoute,
+  settingsRoute,
+  profileRoute,
 ])
 
 const router = createRouter({
