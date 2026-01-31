@@ -9,6 +9,22 @@ datasource db {
   provider = "postgresql"
 }
 
+model User {
+  id             String           @id @default(cuid())
+  email          String           @unique
+  password       String?          // Null for Google OAuth users
+  name           String?
+  googleId       String?          @unique
+  avatar         String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  posts          Post[]
+  monthlySummaries MonthlySummary[]
+
+  @@index([email])
+  @@index([googleId])
+}
+
 model Post {
   id        String   @id @default(cuid())
   title     String
@@ -16,15 +32,19 @@ model Post {
   date      DateTime
   mood      String?
   tags      String[] @default([])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([date])
+  @@index([userId])
 }
 
 model MonthlySummary {
   id          String   @id @default(cuid())
   userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   month       Int
   year        Int
   summary     String   @db.Text

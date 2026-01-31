@@ -17,6 +17,10 @@ import { ThemeProvider } from './components/ThemeProvider'
 
 import App from './App.tsx'
 import Dashboard from './features/Dashboard/index.tsx'
+import Login from './pages/Login.tsx'
+import Signup from './pages/Signup.tsx'
+import ProtectedRoute from './components/ProtectedRoute.tsx'
+import Layout from './features/Layout/index.tsx'
 import { Toaster } from '@/components/ui/sonner'
 
 const rootRoute = createRootRoute({
@@ -27,21 +31,47 @@ const rootRoute = createRootRoute({
       <TanStackRouterDevtools />
     </>
   ),
+  notFoundComponent: () => <div>Page Not Found</div>,
+})
+
+const loginRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/login',
+  component: Login,
+})
+
+const signupRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/signup',
+  component: Signup,
 })
 
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
-  component: App,
+  component: () => (
+    <ProtectedRoute>
+      <Dashboard />
+    </ProtectedRoute>
+  ),
 })
 
 const dashboardRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/dashboard',
-  component: Dashboard,
+  component: () => (
+    <ProtectedRoute>
+      <Dashboard />
+    </ProtectedRoute>
+  ),
 })
 
-const routeTree = rootRoute.addChildren([indexRoute, dashboardRoute])
+const routeTree = rootRoute.addChildren([
+  loginRoute,
+  signupRoute,
+  indexRoute,
+  dashboardRoute,
+])
 
 const router = createRouter({
   routeTree,

@@ -46,7 +46,10 @@ interface TriggerMonthlySummaryResponse {
 
 export const postsApi = createApi({
   reducerPath: 'postsApi',
-  baseQuery: fetchBaseQuery({ baseUrl: 'http://localhost:4000/api' }),
+  baseQuery: fetchBaseQuery({ 
+    baseUrl: 'http://localhost:4000/api',
+    credentials: 'include'
+  }),
   tagTypes: ['Posts'],
   endpoints: (builder) => ({
     createPost: builder.mutation<CreatePostResponse, CreatePostRequest>({

@@ -1,30 +1,56 @@
-import { Link } from '@tanstack/react-router'
-
-import { useState } from 'react'
-import { Home, Menu, X } from 'lucide-react'
+import { useState } from 'react';
+import { Link, useNavigate } from '@tanstack/react-router';
+import { useDispatch, useSelector } from 'react-redux';
+import { Home, LogOut, Menu, User, X } from 'lucide-react';
+import { Button } from './ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import type { RootState } from '@/store';
+import { clearUser } from '@/store/authSlice';
+import { authApi } from '@/api/authApi';
 
 export default function Header() {
-  const [isOpen, setIsOpen] = useState(false)
+  const [isOpen, setIsOpen] = useState(false);
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const { user } = useSelector((state: RootState) => state.auth);
+
+  const handleLogout = async () => {
+    try {
+      await authApi.logout();
+      dispatch(clearUser());
+      navigate({ to: '/login' });
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
 
   return (
     <>
-      <header className="p-4 flex items-center bg-gray-800 text-white shadow-lg">
-        <button
-          onClick={() => setIsOpen(true)}
-          className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
-          aria-label="Open menu"
-        >
-          <Menu size={24} />
-        </button>
-        <h1 className="ml-4 text-xl font-semibold">
-          <Link to="/">
-            <img
-              src="/tanstack-word-logo-white.svg"
-              alt="TanStack Logo"
-              className="h-10"
-            />
-          </Link>
-        </h1>
+      <header className="p-4 flex items-center justify-between bg-gray-800 text-white shadow-lg">
+        <div className="flex items-center">
+          <button
+            onClick={() => setIsOpen(true)}
+            className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+            aria-label="Open menu"
+          >
+            <Menu size={24} />
+          </button>
+          <h1 className="ml-4 text-xl font-semibold">Personal Diary</h1>
+        </div>
+        
+        <div className="flex items-center gap-4">
+          {user && (
+            <div className="flex items-center gap-2">
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={user.avatar} alt={user.name || user.email} />
+                <AvatarFallback>
+                  {user.name ? user.name[0].toUpperCase() : user.email[0].toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-sm hidden sm:inline">{user.name || user.email}</span>
+            </div>
+          )}
+        </div>
       </header>
 
       <aside
@@ -48,20 +74,34 @@ export default function Header() {
             to="/"
             onClick={() => setIsOpen(false)}
             className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 transition-colors mb-2"
-            activeProps={{
-              className:
-                'flex items-center gap-3 p-3 rounded-lg bg-cyan-600 hover:bg-cyan-700 transition-colors mb-2',
-            }}
           >
             <Home size={20} />
             <span className="font-medium">Home</span>
           </Link>
 
-          {/* Demo Links Start */}
-
-          {/* Demo Links End */}
+          {user && (
+            <Link
+              to="/profile"
+              onClick={() => setIsOpen(false)}
+              className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 transition-colors mb-2"
+            >
+              <User size={20} />
+              <span className="font-medium">Profile</span>
+            </Link>
+          )}
         </nav>
+
+        <div className="p-4 border-t border-gray-700">
+          <Button
+            onClick={handleLogout}
+            variant="outline"
+            className="w-full flex items-center gap-2 text-white border-gray-600 hover:bg-gray-800"
+          >
+            <LogOut size={20} />
+            <span>Logout</span>
+          </Button>
+        </div>
       </aside>
     </>
-  )
+  );
 }
