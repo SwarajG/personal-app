@@ -1,8 +1,8 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import Layout from '../Layout'
-import PostList from '@/components/PostList'
 import type { RichTextEditorRef } from '@/components/RichTextEditor'
+import PostList from '@/components/PostList'
 import RichTextEditor from '@/components/RichTextEditor'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,6 +21,7 @@ export default function Dashboard() {
   const [title, setTitle] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isGeneratingTitle, setIsGeneratingTitle] = useState(false)
+  const [currentSelectedDate, setCurrentSelectedDate] = useState<Date | null>(null)
   const editorRef = useRef<RichTextEditorRef>(null)
   const [createPost, { isLoading }] = useCreatePostMutation()
   const [generateTitle] = useGenerateTitleMutation()
@@ -57,10 +58,11 @@ export default function Dashboard() {
     }
 
     try {
+      const postDate = currentSelectedDate || new Date()
       const result = await createPost({
         content,
         title,
-        date: new Date().toISOString(),
+        date: postDate.toISOString(),
       }).unwrap()
 
       if (result.success) {
@@ -80,6 +82,25 @@ export default function Dashboard() {
   return (
     <Layout>
       {(selectedDate) => {
+        // Clear editor when date changes
+        useEffect(() => {
+          if (selectedDate?.getTime() !== currentSelectedDate?.getTime()) {
+            editorRef.current?.clear()
+            setContent('')
+            setTitle('')
+            setCurrentSelectedDate(selectedDate)
+          }
+        }, [selectedDate])
+
+        // Format date for display
+        const formatDisplayDate = (date: Date) => {
+          return date.toLocaleDateString('en-US', { 
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric' 
+          })
+        }
+
         // Format date for API call (YYYY-MM-DD) using local date to avoid timezone issues
         const formatDateString = (date: Date) => {
           const year = date.getFullYear()
@@ -92,6 +113,10 @@ export default function Dashboard() {
           ? formatDateString(selectedDate)
           : formatDateString(new Date())
         
+        const displayDate = selectedDate 
+          ? formatDisplayDate(selectedDate)
+          : formatDisplayDate(new Date())
+        
         const { data: posts = [], isLoading: isLoadingPosts, isError } = useGetPostsByDateQuery(dateString)
         
         return (
@@ -100,7 +125,7 @@ export default function Dashboard() {
             {/* Create New Post Section */}
             <div>
               <div className="mb-6">
-                <h1 className="text-3xl font-bold">Write a Post for Today</h1>
+                <h1 className="text-3xl font-bold">Write a Post for {displayDate}</h1>
                 <p className="text-muted-foreground mt-2">
                   Share your thoughts and experiences
                 </p>

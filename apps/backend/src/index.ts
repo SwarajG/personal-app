@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import session from 'express-session';
@@ -48,6 +48,18 @@ app.use(passport.session());
 // Auth routes
 app.use('/api/auth', authRouter);
 
+// Middleware for service-to-service authentication
+const isInternalService = (req: Request, res: Response, next: NextFunction) => {
+  const apiKey = req.headers['x-api-key'];
+  const expectedKey = process.env.INTERNAL_API_KEY;
+  
+  if (!apiKey || !expectedKey || apiKey !== expectedKey) {
+    return res.status(401).json({ error: 'Unauthorized - Invalid API key' });
+  }
+  
+  next();
+};
+
 app.get('/', (_req: Request, res: Response) => {
   res.json({ message: 'Personal Diary Backend API' });
 });
@@ -56,12 +68,47 @@ app.get('/api/health', (_req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Get all posts
-app.get('/api/posts', isAuthenticated, async (req: Request, res: Response) => {
+// Get all posts (with optional month/year filtering)
+app.get('/api/posts', (req: Request, res: Response, next: NextFunction) => {
+  // Check if it's an internal service call
+  const apiKey = req.headers['x-api-key'];
+  if (apiKey) {
+    return isInternalService(req, res, next);
+  }
+  // Otherwise require user authentication
+  return isAuthenticated(req, res, next);
+}, async (req: Request, res: Response) => {
   try {
-    const userId = (req.user as any).id;
+    const { month, year, userId } = req.query;
+    
+    // For internal service calls, userId comes from query params
+    // For user calls, userId comes from session
+    const actualUserId = userId as string || (req.user as any)?.id;
+    
+    if (!actualUserId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+    
+    let dateFilter = {};
+    
+    // If month and year are provided, filter by that month
+    if (month && year) {
+      const startDate = new Date(parseInt(year as string), parseInt(month as string) - 1, 1);
+      const endDate = new Date(parseInt(year as string), parseInt(month as string), 0, 23, 59, 59, 999);
+      
+      dateFilter = {
+        date: {
+          gte: startDate,
+          lte: endDate,
+        },
+      };
+    }
+    
     const posts = await prisma.post.findMany({
-      where: { userId },
+      where: { 
+        userId: actualUserId,
+        ...dateFilter,
+      },
       orderBy: { date: 'desc' },
     });
     res.json(posts);
@@ -99,6 +146,33 @@ app.get('/api/posts/date/:date', isAuthenticated, async (req: Request, res: Resp
     res.json(posts);
   } catch (error) {
     console.error('Error fetching posts by date:', error);
+    res.status(500).json({ error: 'Failed to fetch posts' });
+  }
+});
+
+// Get posts by month and year
+app.get('/api/posts/month/:year/:month', isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    const { year, month } = req.params;
+    const userId = (req.user as any).id;
+    
+    const startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
+    const endDate = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59, 999);
+    
+    const posts = await prisma.post.findMany({
+      where: {
+        userId,
+        date: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+      orderBy: { date: 'asc' },
+    });
+    
+    res.json(posts);
+  } catch (error) {
+    console.error('Error fetching posts by month:', error);
     res.status(500).json({ error: 'Failed to fetch posts' });
   }
 });
@@ -238,12 +312,23 @@ app.delete('/api/posts/:id', isAuthenticated, async (req: Request, res: Response
 });
 
 // Save monthly summary
-app.post('/api/monthly-summaries', isAuthenticated, async (req: Request, res: Response) => {
+app.post('/api/monthly-summaries', (req: Request, res: Response, next: NextFunction) => {
+  // Check if it's an internal service call
+  const apiKey = req.headers['x-api-key'];
+  if (apiKey) {
+    return isInternalService(req, res, next);
+  }
+  // Otherwise require user authentication
+  return isAuthenticated(req, res, next);
+}, async (req: Request, res: Response) => {
   try {
-    const { month, year, summary, generatedAt } = req.body;
-    const userId = (req.user as any).id;
+    const { month, year, summary, generatedAt, userId: bodyUserId } = req.body;
     
-    if (!month || !year || !summary) {
+    // For internal service calls, userId comes from request body
+    // For user calls, userId comes from session
+    const userId = bodyUserId || (req.user as any)?.id;
+    
+    if (!userId || !month || !year || !summary) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
     

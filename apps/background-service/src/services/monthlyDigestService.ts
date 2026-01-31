@@ -22,16 +22,20 @@ async function fetchPostsForMonth(
 ): Promise<Post[]> {
   try {
     const backendUrl = process.env.BACKEND_API_URL || 'http://localhost:4000';
+    const apiKey = process.env.INTERNAL_API_KEY;
     
-    // Create date range for the month
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0); // Last day of month
+    if (!apiKey) {
+      throw new Error('INTERNAL_API_KEY is not configured');
+    }
     
     const response = await axios.get<Post[]>(`${backendUrl}/api/posts`, {
       params: {
         userId,
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
+        month,
+        year,
+      },
+      headers: {
+        'x-api-key': apiKey,
       },
     });
     
@@ -53,6 +57,11 @@ async function sendMonthlySummaryToBackend(
 ): Promise<void> {
   try {
     const backendUrl = process.env.BACKEND_API_URL || 'http://localhost:4000';
+    const apiKey = process.env.INTERNAL_API_KEY;
+    
+    if (!apiKey) {
+      throw new Error('INTERNAL_API_KEY is not configured');
+    }
     
     await axios.post(`${backendUrl}/api/monthly-summaries`, {
       userId,
@@ -60,6 +69,10 @@ async function sendMonthlySummaryToBackend(
       year,
       summary,
       generatedAt: new Date().toISOString(),
+    }, {
+      headers: {
+        'x-api-key': apiKey,
+      },
     });
     
     console.log(`Successfully sent monthly summary for ${month}/${year} to backend`);
