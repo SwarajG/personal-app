@@ -28,16 +28,32 @@ interface GenerateTitleResponse {
   title: string
 }
 
-interface Post {
+export interface PostMedia {
+  fileKey: string
+  fileName: string
+  fileType: string
+  fileSize: number
+  fileUrl?: string
+}
+
+export interface Post {
   id: string
   title: string
   content: string
   date: string
   mood?: string
-  tags: Array<string>
-  media?: MediaAttachment[]
+  tags: string[]
+  media?: PostMedia[]
   createdAt: string
   updatedAt: string
+}
+
+export interface PaginatedPostsResponse {
+  posts: Post[]
+  total: number
+  page: number
+  limit: number
+  hasMore: boolean
 }
 
 interface TriggerMonthlySummaryRequest {
@@ -104,13 +120,18 @@ export const postsApi = createApi({
       }),
       invalidatesTags: ['Posts'],
     }),
+    getPaginatedPosts: builder.query<PaginatedPostsResponse, { page: number; limit: number }>({
+      query: ({ page, limit }) => `/posts/paginated?page=${page}&limit=${limit}`,
+      providesTags: ['Posts'],
+    }),
   }),
 })
 
-export const { 
-  useCreatePostMutation, 
-  useGenerateTitleMutation, 
+export const {
+  useCreatePostMutation,
+  useGenerateTitleMutation,
   useGetPostsByDateQuery,
   useTriggerMonthlySummaryMutation,
-  useDeletePostMutation 
+  useDeletePostMutation,
+  useGetPaginatedPostsQuery,
 } = postsApi

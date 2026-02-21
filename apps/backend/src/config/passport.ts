@@ -46,45 +46,65 @@ passport.use(
       clientID: process.env.GOOGLE_CLIENT_ID || '',
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
       callbackURL: process.env.GOOGLE_CALLBACK_URL || 'http://localhost:4000/api/auth/google/callback',
-    },
-    async (_accessToken, _refreshToken, profile, done) => {
+      scope: ['profile', 'email', 'https://www.googleapis.com/auth/photospicker.mediaitems.readonly'],
+      accessType: 'offline',
+      prompt: 'consent',
+    } as any,
+    async (accessToken: string, refreshToken: string, profile: any, done: any) => {
       try {
-        // Check if user already exists
+        const email = profile.emails?.[0]?.value;
+        const tokenExpiry = new Date(Date.now() + 3600 * 1000); // 1 hour
+
+        // Check if user already exists by googleId
         let user = await prisma.user.findUnique({
           where: { googleId: profile.id },
         });
 
         if (user) {
+          // Update tokens on every login
+          user = await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              googleAccessToken: accessToken,
+              googleRefreshToken: refreshToken ?? user.googleRefreshToken,
+              googleTokenExpiry: tokenExpiry,
+            },
+          });
           return done(null, user);
         }
 
         // Check if user with email exists
-        const email = profile.emails?.[0]?.value;
         if (email) {
           user = await prisma.user.findUnique({
             where: { email },
           });
 
           if (user) {
-            // Link Google account to existing user
+            // Link Google account to existing user and store tokens
             user = await prisma.user.update({
               where: { id: user.id },
               data: {
                 googleId: profile.id,
                 avatar: profile.photos?.[0]?.value,
+                googleAccessToken: accessToken,
+                googleRefreshToken: refreshToken ?? undefined,
+                googleTokenExpiry: tokenExpiry,
               },
             });
             return done(null, user);
           }
         }
 
-        // Create new user
+        // Create new user with tokens
         user = await prisma.user.create({
           data: {
             googleId: profile.id,
             email: email || '',
             name: profile.displayName,
             avatar: profile.photos?.[0]?.value,
+            googleAccessToken: accessToken,
+            googleRefreshToken: refreshToken ?? undefined,
+            googleTokenExpiry: tokenExpiry,
           },
         });
 

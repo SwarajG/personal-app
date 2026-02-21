@@ -26,6 +26,7 @@ export interface UploadedMedia {
   fileName: string;
   fileType: string;
   fileSize: number;
+  fileUrl?: string;
 }
 
 const API_BASE_URL = 'http://localhost:4000/api';

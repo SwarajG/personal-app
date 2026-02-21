@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Upload, Image, Video, Loader2 } from 'lucide-react';
 import { Button } from '../ui/button';
-import { getMediaConfig } from '../../api/mediaApi';
+import { getMediaConfig, getPublicUrl } from '../../api/mediaApi';
 import { mediaUploadService } from '../../services/mediaUploadService';
 import type { UploadProgress } from '../../services/mediaUploadService';
 import type { UploadedMedia } from '../../api/mediaApi';
+import { GooglePhotosPicker } from '../GooglePhotosPicker';
 
 interface MediaUploadProps {
   onMediaUploaded: (media: UploadedMedia[]) => void;
@@ -23,7 +24,12 @@ export const MediaUpload: React.FC<MediaUploadProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mediaConfig, setMediaConfig] = useState<any>(null);
+  const [isGooglePickerOpen, setIsGooglePickerOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setUploadedMedia(existingMedia);
+  }, [existingMedia]);
 
   useEffect(() => {
     // Fetch media configuration
@@ -88,6 +94,12 @@ export const MediaUpload: React.FC<MediaUploadProps> = ({
 
   const handleRemoveFile = (index: number) => {
     setSelectedFiles(selectedFiles.filter((_, i) => i !== index));
+  };
+
+  const handleGooglePhotosImported = (imported: UploadedMedia[]) => {
+    const newMedia = [...uploadedMedia, ...imported];
+    setUploadedMedia(newMedia);
+    onMediaUploaded(newMedia);
   };
 
   const handleRemoveUploadedMedia = (index: number) => {
@@ -163,19 +175,15 @@ export const MediaUpload: React.FC<MediaUploadProps> = ({
     const isImage = media.fileType.startsWith('image/');
     const isVideo = media.fileType.startsWith('video/');
 
-    const baseURL = import.meta.env.VITE_CLOUDFRONT_DOMAIN;
-
-    console.log('media: ', baseURL + media.fileKey);
-
     return (
       <div key={index} className="relative group">
         <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
           {isImage && (
-            <img src={media.fileUrl} alt={media.fileName} className="w-full h-full object-cover" />
+            <img src={getPublicUrl(media.fileKey)} alt={media.fileName} className="w-full h-full object-cover" />
           )}
           {isVideo && (
             <div className="relative w-full h-full">
-              <video src={media.fileUrl} className="w-full h-full object-cover" />
+              <video src={getPublicUrl(media.fileKey)} className="w-full h-full object-cover" />
               <Video className="absolute inset-0 m-auto w-8 h-8 text-white opacity-70" />
             </div>
           )}
@@ -208,6 +216,17 @@ export const MediaUpload: React.FC<MediaUploadProps> = ({
         >
           <Image className="w-4 h-4 mr-2" />
           Add Images/Videos
+        </Button>
+
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setIsGooglePickerOpen(true)}
+          disabled={isUploading || uploadedMedia.length + selectedFiles.length >= maxFiles}
+        >
+          <Image className="w-4 h-4 mr-2 text-blue-500" />
+          Google Photos
         </Button>
 
         {selectedFiles.length > 0 && (
@@ -303,11 +322,17 @@ export const MediaUpload: React.FC<MediaUploadProps> = ({
 
       {mediaConfig && (
         <p className="text-xs text-gray-500">
-          Max file size: {mediaUploadService.formatFileSize(mediaConfig.maxFileSize)} • 
-          Max files: {maxFiles} • 
+          Max file size: {mediaUploadService.formatFileSize(mediaConfig.maxFileSize)} •
+          Max files: {maxFiles} •
           Supported: Images (JPEG, PNG, GIF, WebP) and Videos (MP4, MOV, AVI, WebM)
         </p>
       )}
+
+      <GooglePhotosPicker
+        open={isGooglePickerOpen}
+        onClose={() => setIsGooglePickerOpen(false)}
+        onPhotosImported={handleGooglePhotosImported}
+      />
     </div>
   );
 };

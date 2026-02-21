@@ -11,6 +11,7 @@ import { triggerMonthlyDigest } from './helpers/queueHelper.js';
 import { isAuthenticated } from './middleware/auth.js';
 import authRouter from './routes/auth.js';
 import mediaRouter from './routes/media.js';
+import googlePhotosRouter from './routes/googlePhotos.js';
 import { redisClient, connectRedis } from './config/redis.js';
 import { storageService } from './services/storageService.js';
 
@@ -52,6 +53,9 @@ app.use('/api/auth', authRouter);
 
 // Media routes
 app.use('/api/media', mediaRouter);
+
+// Google Photos routes
+app.use('/api/google-photos', googlePhotosRouter);
 
 // Middleware for service-to-service authentication
 const isInternalService = (req: Request, res: Response, next: NextFunction) => {
@@ -220,6 +224,48 @@ app.get('/api/posts/month/:year/:month', isAuthenticated, async (req: Request, r
     res.json(postsWithUrls);
   } catch (error) {
     console.error('Error fetching posts by month:', error);
+    res.status(500).json({ error: 'Failed to fetch posts' });
+  }
+});
+
+// Get paginated posts (for All Posts infinite scroll)
+app.get('/api/posts/paginated', isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    const userId = (req.user as any).id;
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string) || 10));
+    const skip = (page - 1) * limit;
+
+    const [posts, total] = await Promise.all([
+      prisma.post.findMany({
+        where: { userId },
+        include: {
+          media: { orderBy: { order: 'asc' } },
+        },
+        orderBy: { date: 'desc' },
+        skip,
+        take: limit,
+      }),
+      prisma.post.count({ where: { userId } }),
+    ]);
+
+    const postsWithUrls = posts.map(post => ({
+      ...post,
+      media: post.media.map(m => ({
+        ...m,
+        fileUrl: storageService.getPublicUrl(m.fileKey),
+      })),
+    }));
+
+    res.json({
+      posts: postsWithUrls,
+      total,
+      page,
+      limit,
+      hasMore: skip + posts.length < total,
+    });
+  } catch (error) {
+    console.error('Error fetching paginated posts:', error);
     res.status(500).json({ error: 'Failed to fetch posts' });
   }
 });

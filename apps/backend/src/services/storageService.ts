@@ -68,6 +68,36 @@ export class StorageService {
   }
 
   /**
+   * Upload a buffer directly to S3 (used for server-side imports, e.g. Google Photos)
+   */
+  async uploadBuffer(
+    buffer: Buffer,
+    fileName: string,
+    fileType: string,
+    userId: string
+  ): Promise<{ fileKey: string; fileSize: number }> {
+    if (!isS3Configured()) {
+      throw new Error('S3 is not properly configured. Please check your environment variables.');
+    }
+
+    const timestamp = Date.now();
+    const sanitizedFileName = this.sanitizeFileName(fileName);
+    const fileKey = `users/${userId}/posts/${timestamp}-${sanitizedFileName}`;
+
+    const command = new PutObjectCommand({
+      Bucket: s3Config.bucket,
+      Key: fileKey,
+      Body: buffer,
+      ContentType: fileType,
+      ContentLength: buffer.length,
+    });
+
+    await s3Client.send(command);
+
+    return { fileKey, fileSize: buffer.length };
+  }
+
+  /**
    * Delete a file from S3
    */
   async deleteFile(fileKey: string): Promise<void> {

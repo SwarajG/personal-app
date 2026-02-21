@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
+import { getPublicUrl } from '../../api/mediaApi';
 
 export interface MediaItem {
   fileKey: string;
@@ -17,7 +18,6 @@ export const MediaGallery: React.FC<MediaGalleryProps> = ({
   showLightbox = true,
 }) => {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-  const baseURL = import.meta.env.VITE_CLOUDFRONT_DOMAIN;
 
   if (media.length === 0) {
     return null;
@@ -48,7 +48,7 @@ export const MediaGallery: React.FC<MediaGalleryProps> = ({
   const renderMedia = (item: MediaItem, index: number, className: string) => {
     const isImage = item.fileType.startsWith('image/');
     const isVideo = item.fileType.startsWith('video/');
-    const fileUrl = baseURL + item.fileKey;
+    const fileUrl = getPublicUrl(item.fileKey);
 
     if (isImage) {
       return (

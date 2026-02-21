@@ -14,9 +14,12 @@ model User {
   email          String           @unique
   password       String?          // Null for Google OAuth users
   name           String?
-  googleId       String?          @unique
-  avatar         String?
-  createdAt      DateTime         @default(now())
+  googleId           String?          @unique
+  avatar             String?
+  googleAccessToken  String?
+  googleRefreshToken String?
+  googleTokenExpiry  DateTime?
+  createdAt          DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
   posts          Post[]
   monthlySummaries MonthlySummary[]

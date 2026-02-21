@@ -85,10 +85,11 @@ router.post('/login', (req: Request, res: Response, next: NextFunction) => {
 });
 
 // Google OAuth
-router.get('/google', passport.authenticate('google', { 
-  scope: ['profile', 'email'],
-  prompt: 'select_account'
-}));
+router.get('/google', passport.authenticate('google', {
+  scope: ['profile', 'email', 'https://www.googleapis.com/auth/photospicker.mediaitems.readonly'],
+  accessType: 'offline',
+  prompt: 'consent',
+} as any));
 
 // Google OAuth callback
 router.get(
