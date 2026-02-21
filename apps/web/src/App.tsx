@@ -8,7 +8,7 @@ import AllPosts from '@/pages/AllPosts';
 import MyPeople from '@/pages/MyPeople';
 import Settings from '@/pages/Settings';
 import Profile from '@/pages/Profile';
-import Layout from '@/features/Layout';
+import MyTimeline from '@/pages/MyTimeline';
 
 function App() {
   return (
@@ -38,6 +38,14 @@ function App() {
             element={
               <ProtectedRoute>
                   <MyPeople />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/my-timeline"
+            element={
+              <ProtectedRoute>
+                <MyTimeline />
               </ProtectedRoute>
             }
           />

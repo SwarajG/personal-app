@@ -1,9 +1,17 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
 
+interface MediaAttachment {
+  fileKey: string
+  fileName: string
+  fileType: string
+  fileSize: number
+}
+
 interface CreatePostRequest {
   title: string
   content: string
   date: string
+  media?: MediaAttachment[]
 }
 
 interface CreatePostResponse {
@@ -27,6 +35,7 @@ interface Post {
   date: string
   mood?: string
   tags: Array<string>
+  media?: MediaAttachment[]
   createdAt: string
   updatedAt: string
 }

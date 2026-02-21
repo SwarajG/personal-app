@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { useDeletePostMutation } from '../api/postsApi'
 import { Button } from './ui/button'
+import { MediaGallery } from './MediaGallery'
 import {
   Dialog,
   DialogContent,
@@ -13,6 +14,12 @@ import {
   DialogTitle,
 } from './ui/dialog'
 
+interface MediaItem {
+  fileKey: string
+  fileName: string
+  fileType: string
+}
+
 interface Post {
   id: string
   title: string
@@ -20,6 +27,7 @@ interface Post {
   date: string
   mood?: string
   tags: Array<string>
+  media?: Array<MediaItem>
   createdAt: string
   updatedAt: string
 }
@@ -35,6 +43,8 @@ export default function PostList({ posts, selectedDate, isLoading, isError }: Po
   const formattedDate = format(selectedDate, 'MMMM d, yyyy')
   const [deletePost, { isLoading: isDeleting }] = useDeletePostMutation()
   const [postToDelete, setPostToDelete] = useState<string | null>(null)
+
+  console.log('PostList posts: ', posts);
 
   const handleDelete = async () => {
     if (!postToDelete) return
@@ -109,6 +119,12 @@ export default function PostList({ posts, selectedDate, isLoading, isError }: Po
                 className="prose prose-sm dark:prose-invert max-w-none"
                 dangerouslySetInnerHTML={{ __html: post.content }}
               />
+              
+              {post.media && post.media.length > 0 && (
+                <div className="pt-3">
+                  <MediaGallery media={post.media} />
+                </div>
+              )}
               
               {post.tags && post.tags.length > 0 && (
                 <div className="flex flex-wrap gap-2 pt-2">

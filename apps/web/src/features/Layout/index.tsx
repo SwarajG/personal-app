@@ -1,8 +1,8 @@
-import { Calendar, ChevronLeft, ChevronRight, FileText, Home, LogOut, Moon, Settings, Sun, User, Users, X } from 'lucide-react'
+import { Calendar, ChevronLeft, ChevronRight, FileText, Home, Hourglass, LogOut, Moon, Settings, Sun, User, Users, X } from 'lucide-react'
 import { useState } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
+import { useMatchRoute, useNavigate } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
-import { useSelector, useDispatch } from 'react-redux'
-import { useNavigate, useMatchRoute } from '@tanstack/react-router'
 import type { RootState } from '@/store'
 import { logout } from '@/store/authSlice'
 import { authApi } from '@/api/authApi'
@@ -171,6 +171,17 @@ export default function Layout({ children }: LayoutProps) {
               >
                 <Users className="h-5 w-5" />
                 {!isSidebarCollapsed && <span>My people</span>}
+              </Button>
+
+              <Button
+                variant="ghost"
+                className={`w-full justify-start gap-3 ${
+                  isSidebarCollapsed ? 'px-0 justify-center' : ''
+                } ${isActiveRoute('/my-timeline') ? 'bg-accent' : ''}`}
+                onClick={() => navigate({ to: '/my-timeline' })}
+              >
+                <Hourglass className="h-5 w-5" />
+                {!isSidebarCollapsed && <span>My timeline</span>}
               </Button>
               
               <Button

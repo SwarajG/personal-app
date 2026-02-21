@@ -10,7 +10,9 @@ import { generatePostTitle } from './helpers/aiHelper.js';
 import { triggerMonthlyDigest } from './helpers/queueHelper.js';
 import { isAuthenticated } from './middleware/auth.js';
 import authRouter from './routes/auth.js';
+import mediaRouter from './routes/media.js';
 import { redisClient, connectRedis } from './config/redis.js';
+import { storageService } from './services/storageService.js';
 
 dotenv.config();
 
@@ -47,6 +49,9 @@ app.use(passport.session());
 
 // Auth routes
 app.use('/api/auth', authRouter);
+
+// Media routes
+app.use('/api/media', mediaRouter);
 
 // Middleware for service-to-service authentication
 const isInternalService = (req: Request, res: Response, next: NextFunction) => {
@@ -109,9 +114,24 @@ app.get('/api/posts', (req: Request, res: Response, next: NextFunction) => {
         userId: actualUserId,
         ...dateFilter,
       },
+      include: {
+        media: {
+          orderBy: { order: 'asc' },
+        },
+      },
       orderBy: { date: 'desc' },
     });
-    res.json(posts);
+    
+    // Add fileUrl to media at runtime
+    const postsWithUrls = posts.map(post => ({
+      ...post,
+      media: post.media.map(m => ({
+        ...m,
+        fileUrl: storageService.getPublicUrl(m.fileKey),
+      })),
+    }));
+    
+    res.json(postsWithUrls);
   } catch (error) {
     console.error('Error fetching posts:', error);
     res.status(500).json({ error: 'Failed to fetch posts' });
@@ -140,10 +160,23 @@ app.get('/api/posts/date/:date', isAuthenticated, async (req: Request, res: Resp
           lte: endOfDay,
         },
       },
+      include: {
+        media: {
+          orderBy: { order: 'asc' },
+        },
+      },
       orderBy: { createdAt: 'desc' },
     });
     
-    res.json(posts);
+    // Add fileUrl to media at runtime
+    const postsWithUrls = posts.map(post => ({
+      ...post,
+      media: post.media.map((m) => ({
+        ...m
+      })),
+    }));
+    
+    res.json(postsWithUrls);
   } catch (error) {
     console.error('Error fetching posts by date:', error);
     res.status(500).json({ error: 'Failed to fetch posts' });
@@ -167,10 +200,24 @@ app.get('/api/posts/month/:year/:month', isAuthenticated, async (req: Request, r
           lte: endDate,
         },
       },
+      include: {
+        media: {
+          orderBy: { order: 'asc' },
+        },
+      },
       orderBy: { date: 'asc' },
     });
     
-    res.json(posts);
+    // Add fileUrl to media at runtime
+    const postsWithUrls = posts.map(post => ({
+      ...post,
+      media: post.media.map(m => ({
+        ...m,
+        fileUrl: storageService.getPublicUrl(m.fileKey),
+      })),
+    }));
+    
+    res.json(postsWithUrls);
   } catch (error) {
     console.error('Error fetching posts by month:', error);
     res.status(500).json({ error: 'Failed to fetch posts' });
@@ -184,6 +231,11 @@ app.get('/api/posts/:id', isAuthenticated, async (req: Request, res: Response) =
     const userId = (req.user as any).id;
     const post = await prisma.post.findUnique({
       where: { id },
+      include: {
+        media: {
+          orderBy: { order: 'asc' },
+        },
+      },
     });
     
     if (!post) {
@@ -195,7 +247,16 @@ app.get('/api/posts/:id', isAuthenticated, async (req: Request, res: Response) =
       return res.status(403).json({ error: 'Access denied' });
     }
     
-    res.json(post);
+    // Add fileUrl to media at runtime
+    const postWithUrls = {
+      ...post,
+      media: post.media.map(m => ({
+        ...m,
+        fileUrl: storageService.getPublicUrl(m.fileKey),
+      })),
+    };
+    
+    res.json(postWithUrls);
   } catch (error) {
     console.error('Error fetching post:', error);
     res.status(500).json({ error: 'Failed to fetch post' });
@@ -222,7 +283,7 @@ app.post('/api/ai/generate-title', isAuthenticated, async (req: Request, res: Re
 // Create a new post
 app.post('/api/posts', isAuthenticated, async (req: Request, res: Response) => {
   try {
-    const { title, content, date, mood, tags } = req.body;
+    const { title, content, date, mood, tags, media } = req.body;
     const userId = (req.user as any).id;
     
     const post = await prisma.post.create({
@@ -233,10 +294,31 @@ app.post('/api/posts', isAuthenticated, async (req: Request, res: Response) => {
         mood,
         tags: tags || [],
         userId,
+        media: media && media.length > 0 ? {
+          create: media.map((m: any, index: number) => ({
+            fileKey: m.fileKey,
+            fileName: m.fileName,
+            fileType: m.fileType,
+            fileSize: m.fileSize,
+            order: index,
+          })),
+        } : undefined,
+      },
+      include: {
+        media: true,
       },
     });
     
-    res.status(201).json(post);
+    // Add fileUrl to media at runtime
+    const postWithUrls = {
+      ...post,
+      media: post.media.map(m => ({
+        ...m,
+        fileUrl: storageService.getPublicUrl(m.fileKey),
+      })),
+    };
+    
+    res.status(201).json(postWithUrls);
   } catch (error) {
     console.error('Error creating post:', error);
     res.status(500).json({ error: 'Failed to create post' });

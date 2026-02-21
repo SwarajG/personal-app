@@ -4,6 +4,7 @@ import Layout from '../Layout'
 import type { RichTextEditorRef } from '@/components/RichTextEditor'
 import PostList from '@/components/PostList'
 import RichTextEditor from '@/components/RichTextEditor'
+import { MediaUpload } from '@/components/MediaUpload'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -15,10 +16,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { useCreatePostMutation, useGenerateTitleMutation, useGetPostsByDateQuery } from '@/api/postsApi'
+import type { UploadedMedia } from '@/api/mediaApi'
 
 export default function Dashboard() {
   const [content, setContent] = useState('')
   const [title, setTitle] = useState('')
+  const [uploadedMedia, setUploadedMedia] = useState<UploadedMedia[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isGeneratingTitle, setIsGeneratingTitle] = useState(false)
   const [currentSelectedDate, setCurrentSelectedDate] = useState<Date | null>(null)
@@ -29,6 +32,10 @@ export default function Dashboard() {
   const onModalClose = () => {
     setIsModalOpen(false)
     setTitle('');
+  }
+
+  const handleMediaUploaded = (media: UploadedMedia[]) => {
+    setUploadedMedia(media)
   }
 
   const handleInitialSubmit = async () => {
@@ -63,6 +70,7 @@ export default function Dashboard() {
         content,
         title,
         date: postDate.toISOString(),
+        media: uploadedMedia.length > 0 ? uploadedMedia : undefined,
       }).unwrap()
 
       if (result.success) {
@@ -70,6 +78,7 @@ export default function Dashboard() {
         editorRef.current?.clear()
         setContent('')
         setTitle('')
+        setUploadedMedia([])
         setIsModalOpen(false)
       } else {
         toast.error(result.message || 'Failed to save post')
@@ -88,6 +97,7 @@ export default function Dashboard() {
             editorRef.current?.clear()
             setContent('')
             setTitle('')
+            setUploadedMedia([])
             setCurrentSelectedDate(selectedDate)
           }
         }, [selectedDate])
@@ -139,6 +149,12 @@ export default function Dashboard() {
                   placeholder="Write your post here..."
                   minHeight="120px"
                   className="shadow-sm"
+                />
+
+                <MediaUpload 
+                  onMediaUploaded={handleMediaUploaded}
+                  existingMedia={uploadedMedia}
+                  maxFiles={10}
                 />
 
                 <div className="flex justify-end">

@@ -22,6 +22,7 @@ import AllPosts from './pages/AllPosts.tsx'
 import MyPeople from './pages/MyPeople.tsx'
 import Settings from './pages/Settings.tsx'
 import Profile from './pages/Profile.tsx'
+import MyTimeline from './pages/MyTimeline.tsx'
 import ProtectedRoute from './components/ProtectedRoute.tsx'
 import Layout from './features/Layout/index.tsx'
 import { Toaster } from '@/components/ui/sonner'
@@ -93,6 +94,18 @@ const myPeopleRoute = createRoute({
   ),
 })
 
+const myTimelineRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/my-timeline',
+  component: () => (
+    <ProtectedRoute>
+      <Layout>
+        <MyTimeline />
+      </Layout>
+    </ProtectedRoute>
+  ),
+})  
+
 const settingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/settings',
@@ -124,8 +137,9 @@ const routeTree = rootRoute.addChildren([
   dashboardRoute,
   allPostsRoute,
   myPeopleRoute,
+  myTimelineRoute,
   settingsRoute,
-  profileRoute,
+  profileRoute
 ])
 
 const router = createRouter({

@@ -36,11 +36,27 @@ model Post {
   tags      String[] @default([])
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  media     Media[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([date])
   @@index([userId])
+}
+
+model Media {
+  id        String   @id @default(cuid())
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  fileKey   String   // S3 file key (URL constructed at runtime)
+  fileName  String   // Original file name
+  fileType  String   // MIME type (image/jpeg, video/mp4, etc.)
+  fileSize  Int      // File size in bytes
+  order     Int      @default(0) // Order of media in the post
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([postId])
 }
 
 model MonthlySummary {
