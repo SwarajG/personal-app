@@ -10,24 +10,27 @@ datasource db {
 }
 
 model User {
-  id             String           @id @default(cuid())
-  email          String           @unique
-  password       String?          // Null for Google OAuth users
-  name           String?
+  id                 String           @id @default(cuid())
+  email              String           @unique
+  password           String?          // Null for Google OAuth users
+  name               String?
+  username           String?          @unique
   googleId           String?          @unique
-  avatar             String?
+  avatar             String?          // Google profile picture URL
+  profilePicture     String?          // Custom uploaded profile picture (S3 key)
   googleAccessToken  String?
   googleRefreshToken String?
   googleTokenExpiry  DateTime?
   createdAt          DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  posts          Post[]
-  monthlySummaries MonthlySummary[]
-  people         Person[]         // People added by this user
-  addedByUsers   Person[]         @relation("AddedPerson")
+  updatedAt          DateTime         @updatedAt
+  posts              Post[]
+  monthlySummaries   MonthlySummary[]
+  people             Person[]         // People added by this user
+  addedByUsers       Person[]         @relation("AddedPerson")
 
   @@index([email])
   @@index([googleId])
+  @@index([username])
 }
 
 model Post {

@@ -14,7 +14,9 @@ export interface User {
   id: string;
   email: string;
   name?: string;
+  username?: string;
   avatar?: string;
+  profilePicture?: string;
   createdAt: string;
 }
 
@@ -59,4 +61,43 @@ export const authApi = {
   },
 };
 
+
+export interface ProfileUser {
+  id: string;
+  email: string;
+  name?: string;
+  username?: string;
+  avatar?: string;
+  profilePicture?: string;
+  profilePictureUrl?: string;
+  googleId?: string;
+  createdAt: string;
+}
+
+export const profileApi = {
+  getProfile: async (): Promise<{ user: ProfileUser }> => {
+    const response = await api.get('/api/profile');
+    return response.data;
+  },
+
+  updateProfile: async (data: { name?: string; username?: string }): Promise<{ user: ProfileUser }> => {
+    const response = await api.put('/api/profile', data);
+    return response.data;
+  },
+
+  getProfilePictureUploadUrl: async (fileType: string): Promise<{ uploadUrl: string; fileKey: string }> => {
+    const response = await api.get('/api/profile/picture/upload-url', { params: { fileType } });
+    return response.data;
+  },
+
+  saveProfilePicture: async (fileKey: string): Promise<{ profilePicture: string; profilePictureUrl: string }> => {
+    const response = await api.put('/api/profile/picture', { fileKey });
+    return response.data;
+  },
+
+  deleteAccount: async (): Promise<{ message: string }> => {
+    const response = await api.delete('/api/profile');
+    return response.data;
+  },
+};
 export default api;

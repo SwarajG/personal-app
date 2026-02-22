@@ -12,6 +12,7 @@ import { isAuthenticated } from './middleware/auth.js';
 import authRouter from './routes/auth.js';
 import mediaRouter from './routes/media.js';
 import googlePhotosRouter from './routes/googlePhotos.js';
+import profileRouter from './routes/profile.js';
 import { redisClient, connectRedis } from './config/redis.js';
 import { storageService } from './services/storageService.js';
 
@@ -56,6 +57,9 @@ app.use('/api/media', mediaRouter);
 
 // Google Photos routes
 app.use('/api/google-photos', googlePhotosRouter);
+
+// Profile routes
+app.use('/api/profile', profileRouter);
 
 // Middleware for service-to-service authentication
 const isInternalService = (req: Request, res: Response, next: NextFunction) => {

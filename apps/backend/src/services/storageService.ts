@@ -98,6 +98,28 @@ export class StorageService {
   }
 
   /**
+   * Generate a presigned URL for uploading a profile picture to S3
+   */
+  async generateProfilePicturePresignedUrl(
+    fileKey: string,
+    fileType: string
+  ): Promise<string> {
+    if (!isS3Configured()) {
+      throw new Error('S3 is not properly configured. Please check your environment variables.');
+    }
+
+    const command = new PutObjectCommand({
+      Bucket: s3Config.bucket,
+      Key: fileKey,
+      ContentType: fileType,
+    });
+
+    return await getSignedUrl(s3Client, command, {
+      expiresIn: s3Config.presignedUrlExpiration,
+    });
+  }
+
+  /**
    * Delete a file from S3
    */
   async deleteFile(fileKey: string): Promise<void> {

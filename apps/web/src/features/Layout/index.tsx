@@ -6,6 +6,7 @@ import type { ReactNode } from 'react'
 import type { RootState } from '@/store'
 import { logout } from '@/store/authSlice'
 import { authApi } from '@/api/authApi'
+import { getPublicUrl } from '@/api/mediaApi'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import {
@@ -86,7 +87,7 @@ export default function Layout({ children }: LayoutProps) {
           <DropdownMenu>
           <DropdownMenuTrigger className="outline-none">
             <Avatar className="h-9 w-9 cursor-pointer hover:opacity-80 transition-opacity">
-              <AvatarImage src={user?.avatar} alt="Profile" />
+              <AvatarImage src={user?.profilePicture ? getPublicUrl(user.profilePicture) : user?.avatar} alt="Profile" />
               <AvatarFallback>
                 {user?.name ? user.name.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase() || 'U'}
               </AvatarFallback>
