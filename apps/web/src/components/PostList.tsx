@@ -3,8 +3,9 @@ import { Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { useDeletePostMutation } from '../api/postsApi'
+import type { Post } from '../api/postsApi'
 import { Button } from './ui/button'
-import { MediaGallery } from './MediaGallery'
+import { PostCard } from './PostCard'
 import {
   Dialog,
   DialogContent,
@@ -13,24 +14,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from './ui/dialog'
-
-interface MediaItem {
-  fileKey: string
-  fileName: string
-  fileType: string
-}
-
-interface Post {
-  id: string
-  title: string
-  content: string
-  date: string
-  mood?: string
-  tags: Array<string>
-  media?: Array<MediaItem>
-  createdAt: string
-  updatedAt: string
-}
 
 interface PostListProps {
   posts: Array<Post>
@@ -44,16 +27,13 @@ export default function PostList({ posts, selectedDate, isLoading, isError }: Po
   const [deletePost, { isLoading: isDeleting }] = useDeletePostMutation()
   const [postToDelete, setPostToDelete] = useState<string | null>(null)
 
-  console.log('PostList posts: ', posts);
-
   const handleDelete = async () => {
     if (!postToDelete) return
-
     try {
       await deletePost(postToDelete).unwrap()
       toast.success('Post deleted successfully')
       setPostToDelete(null)
-    } catch (error) {
+    } catch {
       toast.error('Failed to delete post. Please try again.')
     }
   }
@@ -86,60 +66,25 @@ export default function PostList({ posts, selectedDate, isLoading, isError }: Po
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold">
-        Posts for {formattedDate}
-      </h2>
-      
+      <h2 className="text-2xl font-bold">Posts for {formattedDate}</h2>
+
       <div className="space-y-4">
         {posts.map((post) => (
-          <article
+          <PostCard
             key={post.id}
-            className="rounded-lg border bg-card p-6 shadow-sm hover:shadow-md transition-shadow"
-          >
-            <div className="space-y-3">
-              <div className="flex items-start justify-between">
-                <h3 className="text-xl font-semibold">{post.title}</h3>
-                <div className="flex items-center gap-2">
-                  <time className="text-sm text-muted-foreground">
-                    {format(new Date(post.createdAt), 'h:mm a')}
-                  </time>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                    onClick={() => setPostToDelete(post.id)}
-                    title="Delete post"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-              
-              <div
-                className="prose prose-sm dark:prose-invert max-w-none"
-                dangerouslySetInnerHTML={{ __html: post.content }}
-              />
-              
-              {post.media && post.media.length > 0 && (
-                <div className="pt-3">
-                  <MediaGallery media={post.media} />
-                </div>
-              )}
-              
-              {post.tags && post.tags.length > 0 && (
-                <div className="flex flex-wrap gap-2 pt-2">
-                  {post.tags.map((tag, index) => (
-                    <span
-                      key={index}
-                      className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-          </article>
+            post={post}
+            actions={
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                onClick={() => setPostToDelete(post.id)}
+                title="Delete post"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            }
+          />
         ))}
       </div>
 
@@ -152,18 +97,10 @@ export default function PostList({ posts, selectedDate, isLoading, isError }: Po
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setPostToDelete(null)}
-              disabled={isDeleting}
-            >
+            <Button variant="outline" onClick={() => setPostToDelete(null)} disabled={isDeleting}>
               Cancel
             </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={isDeleting}
-            >
+            <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
               {isDeleting ? 'Deleting...' : 'Delete'}
             </Button>
           </DialogFooter>

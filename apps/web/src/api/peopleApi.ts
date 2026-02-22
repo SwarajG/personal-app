@@ -1,39 +1,51 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
 
-interface User {
+export type PersonStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED'
+
+interface UserSummary {
   id: string
   email: string
   name?: string
   avatar?: string
 }
 
-interface Person {
+export interface Person {
   id: string
   userId: string
   addedUserId: string
   alias: string
+  relationship?: string
+  status: PersonStatus
   createdAt: string
   updatedAt: string
-  addedUser: User
+  addedUser: UserSummary
+  user: UserSummary
+}
+
+export interface PeopleResponse {
+  accepted: Person[]
+  pendingSent: Person[]
+  pendingReceived: Person[]
 }
 
 interface AddPersonRequest {
   addedUserId: string
   alias?: string
+  relationship?: string
 }
 
 export const peopleApi = createApi({
   reducerPath: 'peopleApi',
-  baseQuery: fetchBaseQuery({ 
+  baseQuery: fetchBaseQuery({
     baseUrl: 'http://localhost:4000/api',
-    credentials: 'include'
+    credentials: 'include',
   }),
   tagTypes: ['People'],
   endpoints: (builder) => ({
-    searchUsers: builder.query<User[], string>({
+    searchUsers: builder.query<UserSummary[], string>({
       query: (q) => `/users/search?q=${encodeURIComponent(q)}`,
     }),
-    getPeople: builder.query<Person[], void>({
+    getPeople: builder.query<PeopleResponse, void>({
       query: () => '/people',
       providesTags: ['People'],
     }),
@@ -42,6 +54,20 @@ export const peopleApi = createApi({
         url: '/people',
         method: 'POST',
         body: data,
+      }),
+      invalidatesTags: ['People'],
+    }),
+    acceptPerson: builder.mutation<Person, string>({
+      query: (id) => ({
+        url: `/people/${id}/accept`,
+        method: 'PATCH',
+      }),
+      invalidatesTags: ['People'],
+    }),
+    declinePerson: builder.mutation<void, string>({
+      query: (id) => ({
+        url: `/people/${id}/decline`,
+        method: 'PATCH',
       }),
       invalidatesTags: ['People'],
     }),
@@ -55,10 +81,12 @@ export const peopleApi = createApi({
   }),
 })
 
-export const { 
+export const {
   useSearchUsersQuery,
   useLazySearchUsersQuery,
   useGetPeopleQuery,
   useAddPersonMutation,
+  useAcceptPersonMutation,
+  useDeclinePersonMutation,
   useRemovePersonMutation,
 } = peopleApi

@@ -35,7 +35,7 @@ export default function Header() {
           >
             <Menu size={24} />
           </button>
-          <h1 className="ml-4 text-xl font-semibold">Personal Diary</h1>
+          <h1 className="ml-4 text-xl font-semibold">Innerloop</h1>
         </div>
         
         <div className="flex items-center gap-4">

@@ -23,10 +23,13 @@ model User {
   googleTokenExpiry  DateTime?
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
-  posts              Post[]
-  monthlySummaries   MonthlySummary[]
+  posts              Post[]           @relation("PostAuthor")
+  coAuthoredPosts    Post[]           @relation("CoAuthoredPosts")
+  initiatedPosts     Post[]           @relation("InitiatedPosts")
   people             Person[]         // People added by this user
   addedByUsers       Person[]         @relation("AddedPerson")
+  notifications      Notification[]
+  milestones         Milestone[]      @relation("MilestoneCreator")
 
   @@index([email])
   @@index([googleId])
@@ -34,64 +37,114 @@ model User {
 }
 
 model Post {
-  id        String   @id @default(cuid())
-  title     String
-  content   String   @db.Text
-  date      DateTime
-  mood      String?
-  tags      String[] @default([])
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  media     Media[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id               String         @id @default(cuid())
+  title            String
+  content          String         @db.Text
+  date             DateTime
+  mood             String?
+  tags             String[]       @default([])
+  userId           String
+  user             User           @relation("PostAuthor", fields: [userId], references: [id], onDelete: Cascade)
+  media            Media[]
+  // Co-post fields
+  isCoPost         Boolean        @default(false)
+  coAuthorId       String?
+  coAuthor         User?          @relation("CoAuthoredPosts", fields: [coAuthorId], references: [id], onDelete: SetNull)
+  coAuthorAccepted Boolean        @default(false)
+  initiatedBy      String
+  initiatedByUser  User           @relation("InitiatedPosts", fields: [initiatedBy], references: [id], onDelete: Cascade)
+  notifications    Notification[]
+  milestone        Milestone?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 
   @@index([date])
   @@index([userId])
+  @@index([coAuthorId])
 }
 
 model Media {
-  id        String   @id @default(cuid())
-  postId    String
-  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  fileKey   String   // S3 file key (URL constructed at runtime)
-  fileName  String   // Original file name
-  fileType  String   // MIME type (image/jpeg, video/mp4, etc.)
-  fileSize  Int      // File size in bytes
-  order     Int      @default(0) // Order of media in the post
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String   @id @default(cuid())
+  postId        String
+  post          Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  fileKey       String   // S3 file key (URL constructed at runtime)
+  fileName      String   // Original file name
+  fileType      String   // MIME type (image/jpeg, video/mp4, etc.)
+  fileSize      Int      // File size in bytes
+  order         Int      @default(0) // Order of media in the post
+  contributedBy String?  // userId of contributor (null = original author)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@index([postId])
 }
 
-model MonthlySummary {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  month       Int
-  year        Int
-  summary     String   @db.Text
-  generatedAt DateTime
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+enum NotificationType {
+  CO_POST_RECEIVED
+  CO_POST_ACCEPTED
+  CO_POST_DECLINED
+  CO_POST_CONTRIBUTED
+  PERSON_REQUEST_RECEIVED
+  PERSON_REQUEST_ACCEPTED
+  PERSON_REQUEST_DECLINED
+}
 
-  @@unique([userId, month, year])
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  message   String
+  postId    String?
+  post      Post?            @relation(fields: [postId], references: [id], onDelete: SetNull)
+  personId  String?
+  person    Person?          @relation(fields: [personId], references: [id], onDelete: SetNull)
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
   @@index([userId])
-  @@index([year, month])
+  @@index([userId, read])
+}
+
+enum PersonStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
 }
 
 model Person {
-  id          String   @id @default(cuid())
-  userId      String   // The user who added this person
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  addedUserId String   // The user who was added to the people list
-  addedUser   User     @relation("AddedPerson", fields: [addedUserId], references: [id], onDelete: Cascade)
-  alias       String   // The alias/nickname for this person
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String         @id @default(cuid())
+  userId        String         // The user who sent the request
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  addedUserId   String         // The user who received the request
+  addedUser     User           @relation("AddedPerson", fields: [addedUserId], references: [id], onDelete: Cascade)
+  alias         String         // The alias/nickname for this person
+  relationship  String?        // e.g. "wife", "brother", "best friend"
+  status        PersonStatus   @default(PENDING)
+  notifications Notification[]
+  milestones    Milestone[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   @@unique([userId, addedUserId])
   @@index([userId])
   @@index([addedUserId])
+  @@index([status])
+}
+
+model Milestone {
+  id            String   @id @default(cuid())
+  postId        String   @unique
+  post          Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  personId      String?
+  person        Person?  @relation(fields: [personId], references: [id], onDelete: SetNull)
+  label         String
+  presetUsed    String?
+  createdBy     String
+  createdByUser User     @relation("MilestoneCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+
+  @@index([postId])
+  @@index([personId])
+  @@index([createdBy])
 }

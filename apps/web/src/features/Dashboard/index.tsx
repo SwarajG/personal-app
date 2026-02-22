@@ -1,10 +1,12 @@
 import { useRef, useState, useEffect } from 'react'
 import { toast } from 'sonner'
+import { Flag } from 'lucide-react'
 import Layout from '../Layout'
-import type { RichTextEditorRef } from '@/components/RichTextEditor'
+import type { PostComposerRef } from '@/components/PostComposer'
 import PostList from '@/components/PostList'
-import RichTextEditor from '@/components/RichTextEditor'
+import PostComposer from '@/components/PostComposer'
 import { MediaUpload } from '@/components/MediaUpload'
+import { CoAuthorPicker } from '@/components/CoAuthorPicker'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -16,7 +18,142 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { useCreatePostMutation, useGenerateTitleMutation, useGetPostsByDateQuery } from '@/api/postsApi'
+import { useAddOrUpdateMilestoneMutation } from '@/api/milestoneApi'
+import { useGetPeopleQuery } from '@/api/peopleApi'
 import type { UploadedMedia } from '@/api/mediaApi'
+import type { Person } from '@/api/peopleApi'
+
+// ── Milestone staging form (used before post is created) ──────────────────────
+
+const MILESTONE_PRESETS = [
+  'The day we met',
+  'First trip together',
+  'Got through something hard',
+  "A moment I'll never forget",
+  'When everything changed',
+  'First time I realised',
+  'A goodbye',
+  'A new beginning',
+  'Proud of us',
+]
+
+interface StagedMilestone {
+  label: string
+  presetUsed?: string
+  personId?: string
+}
+
+function MilestoneStagingForm({
+  isCoPost,
+  people,
+  initial,
+  onSave,
+  onCancel,
+}: {
+  isCoPost: boolean
+  people: Person[]
+  initial: StagedMilestone | null
+  onSave: (m: StagedMilestone) => void
+  onCancel: () => void
+}) {
+  const [label, setLabel] = useState(initial?.label ?? '')
+  const [presetUsed, setPresetUsed] = useState(initial?.presetUsed ?? '')
+  const [personId, setPersonId] = useState(initial?.personId ?? '')
+
+  const handlePreset = (preset: string) => { setLabel(preset); setPresetUsed(preset) }
+  const handleLabelChange = (v: string) => {
+    setLabel(v.slice(0, 60))
+    if (presetUsed && v !== presetUsed) setPresetUsed('')
+  }
+
+  return (
+    <>
+      <div className="space-y-5 py-2">
+        <div>
+          <p className="text-xs text-muted-foreground mb-3">Pick a suggestion or write your own below</p>
+          <div className="flex flex-wrap gap-2">
+            {MILESTONE_PRESETS.map((preset) => (
+              <button
+                key={preset}
+                type="button"
+                onClick={() => handlePreset(preset)}
+                className={`rounded-full border px-3 py-1.5 text-xs transition-colors
+                  ${label === preset
+                    ? 'border-amber-500 bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                    : 'border-border bg-muted/40 text-muted-foreground hover:border-amber-400 hover:text-foreground'
+                  }`}
+              >
+                {preset}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <Input
+            value={label}
+            onChange={(e) => handleLabelChange(e.target.value)}
+            placeholder="What made this moment matter?"
+            className="text-sm"
+          />
+          <p className="text-right text-xs text-muted-foreground">{label.length}/60</p>
+        </div>
+        {!isCoPost && people.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground">Link to a relationship (optional)</p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setPersonId('')}
+                className={`rounded-full border px-3 py-1.5 text-xs transition-colors
+                  ${!personId ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-muted/40 text-muted-foreground hover:border-primary/50'}`}
+              >
+                No link
+              </button>
+              {people.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setPersonId(p.id)}
+                  className={`rounded-full border px-3 py-1.5 text-xs transition-colors
+                    ${personId === p.id ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-muted/40 text-muted-foreground hover:border-primary/50'}`}
+                >
+                  {p.alias}{p.relationship && <span className="ml-1 opacity-60">· {p.relationship}</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+      <DialogFooter>
+        <Button variant="outline" onClick={onCancel}>Cancel</Button>
+        <Button
+          onClick={() => onSave({ label: label.trim(), presetUsed: presetUsed || undefined, personId: isCoPost ? undefined : personId || undefined })}
+          disabled={!label.trim()}
+          className="gap-1.5"
+        >
+          <Flag className="h-3.5 w-3.5" />
+          Save Milestone
+        </Button>
+      </DialogFooter>
+    </>
+  )
+}
+
+interface SelectedPerson {
+  id: string
+  addedUserId: string
+  alias: string
+  addedUser: { id: string; email: string; name?: string; avatar?: string }
+}
+
+/** Convert plain textarea text to simple HTML for storage/display. */
+function textToHtml(text: string): string {
+  if (!text.trim()) return ''
+  return text
+    .split(/\n{2,}/)
+    .map((para) => `<p>${para.replace(/\n/g, '<br>')}</p>`)
+    .join('')
+}
 
 export default function Dashboard() {
   const [content, setContent] = useState('')
@@ -25,13 +162,19 @@ export default function Dashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isGeneratingTitle, setIsGeneratingTitle] = useState(false)
   const [currentSelectedDate, setCurrentSelectedDate] = useState<Date | null>(null)
-  const editorRef = useRef<RichTextEditorRef>(null)
+  const [selectedCoAuthor, setSelectedCoAuthor] = useState<SelectedPerson | null>(null)
+  const [isMilestoneDialogOpen, setIsMilestoneDialogOpen] = useState(false)
+  const [pendingMilestone, setPendingMilestone] = useState<{ label: string; presetUsed?: string; personId?: string } | null>(null)
+  const editorRef = useRef<PostComposerRef>(null)
   const [createPost, { isLoading }] = useCreatePostMutation()
   const [generateTitle] = useGenerateTitleMutation()
+  const [addOrUpdateMilestone] = useAddOrUpdateMilestoneMutation()
+  const { data: people } = useGetPeopleQuery()
 
   const onModalClose = () => {
     setIsModalOpen(false)
-    setTitle('');
+    setTitle('')
+    setPendingMilestone(null)
   }
 
   const handleMediaUploaded = (media: UploadedMedia[]) => {
@@ -39,7 +182,7 @@ export default function Dashboard() {
   }
 
   const handleInitialSubmit = async () => {
-    if (!content.trim() || content === '<p><br></p>') {
+    if (!content.trim()) {
       toast.error('Please write something before submitting')
       return
     }
@@ -67,18 +210,39 @@ export default function Dashboard() {
     try {
       const postDate = currentSelectedDate || new Date()
       const result = await createPost({
-        content,
+        content: textToHtml(content),
         title,
         date: postDate.toISOString(),
         media: uploadedMedia.length > 0 ? uploadedMedia : undefined,
+        coAuthorId: selectedCoAuthor?.addedUserId,
       }).unwrap()
 
       if (result.success) {
-        toast.success(result.message || 'Post saved successfully!')
+        // Save milestone if one was staged
+        if (pendingMilestone && result.id) {
+          try {
+            await addOrUpdateMilestone({
+              postId: result.id,
+              label: pendingMilestone.label,
+              presetUsed: pendingMilestone.presetUsed,
+              personId: pendingMilestone.personId,
+            }).unwrap()
+          } catch {
+            toast.error('Post saved but milestone could not be attached')
+          }
+        }
+
+        if (selectedCoAuthor) {
+          toast.success(`Memory shared! ${selectedCoAuthor.alias} will be notified to accept.`)
+        } else {
+          toast.success(result.message || 'Post saved successfully!')
+        }
         editorRef.current?.clear()
         setContent('')
         setTitle('')
         setUploadedMedia([])
+        setSelectedCoAuthor(null)
+        setPendingMilestone(null)
         setIsModalOpen(false)
       } else {
         toast.error(result.message || 'Failed to save post')
@@ -87,6 +251,8 @@ export default function Dashboard() {
       toast.error('An error occurred while saving the post')
     }
   }
+
+  const acceptedPeople = people?.accepted ?? []
 
   return (
     <Layout>
@@ -98,6 +264,7 @@ export default function Dashboard() {
             setContent('')
             setTitle('')
             setUploadedMedia([])
+            setSelectedCoAuthor(null)
             setCurrentSelectedDate(selectedDate)
           }
         }, [selectedDate])
@@ -142,7 +309,7 @@ export default function Dashboard() {
               </div>
 
               <div className="space-y-4">
-                <RichTextEditor
+                <PostComposer
                   ref={editorRef}
                   value={content}
                   onChange={setContent}
@@ -151,10 +318,15 @@ export default function Dashboard() {
                   className="shadow-sm"
                 />
 
-                <MediaUpload 
+                <MediaUpload
                   onMediaUploaded={handleMediaUploaded}
                   existingMedia={uploadedMedia}
                   maxFiles={10}
+                />
+
+                <CoAuthorPicker
+                  selected={selectedCoAuthor}
+                  onSelect={setSelectedCoAuthor}
                 />
 
                 <div className="flex justify-end">
@@ -181,6 +353,25 @@ export default function Dashboard() {
               isError={isError}
             />
 
+            {/* Milestone staging dialog (no postId yet — stores locally until publish) */}
+            <Dialog open={isMilestoneDialogOpen} onOpenChange={setIsMilestoneDialogOpen}>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Flag className="h-4 w-4 text-amber-500" />
+                    Mark as Milestone
+                  </DialogTitle>
+                </DialogHeader>
+                <MilestoneStagingForm
+                  isCoPost={!!selectedCoAuthor}
+                  people={acceptedPeople}
+                  initial={pendingMilestone}
+                  onSave={(m) => { setPendingMilestone(m); setIsMilestoneDialogOpen(false) }}
+                  onCancel={() => setIsMilestoneDialogOpen(false)}
+                />
+              </DialogContent>
+            </Dialog>
+
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
               <DialogContent>
                 <DialogHeader>
@@ -203,6 +394,46 @@ export default function Dashboard() {
                       onChange={(e) => setTitle(e.target.value)}
                       disabled={isGeneratingTitle}
                     />
+                  </div>
+                  {selectedCoAuthor && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground bg-accent rounded-md px-3 py-2">
+                      <span>Sharing with:</span>
+                      <span className="font-medium text-foreground">{selectedCoAuthor.alias}</span>
+                    </div>
+                  )}
+                  {/* Milestone option */}
+                  <div className="border-t pt-3">
+                    {pendingMilestone ? (
+                      <div className="flex items-center gap-2 text-sm">
+                        <Flag className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
+                        <span className="text-amber-600 dark:text-amber-400 flex-1 truncate">
+                          {pendingMilestone.label}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setIsMilestoneDialogOpen(true)}
+                          className="text-xs text-muted-foreground hover:text-foreground underline"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPendingMilestone(null)}
+                          className="text-xs text-muted-foreground hover:text-destructive underline"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setIsMilestoneDialogOpen(true)}
+                        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
+                      >
+                        <Flag className="h-3.5 w-3.5" />
+                        Mark as milestone moment
+                      </button>
+                    )}
                   </div>
                 </div>
                 <DialogFooter>

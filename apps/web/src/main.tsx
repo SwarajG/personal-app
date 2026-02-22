@@ -23,6 +23,7 @@ import MyPeople from './pages/MyPeople.tsx'
 import Settings from './pages/Settings.tsx'
 import Profile from './pages/Profile.tsx'
 import MyTimeline from './pages/MyTimeline.tsx'
+import CoPosts from './pages/CoPosts.tsx'
 import ProtectedRoute from './components/ProtectedRoute.tsx'
 import Layout from './features/Layout/index.tsx'
 import { Toaster } from '@/components/ui/sonner'
@@ -130,6 +131,16 @@ const profileRoute = createRoute({
   ),
 })
 
+const coPostsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/co-posts',
+  component: () => (
+    <ProtectedRoute>
+      <CoPosts />
+    </ProtectedRoute>
+  ),
+})
+
 const routeTree = rootRoute.addChildren([
   loginRoute,
   signupRoute,
@@ -139,7 +150,8 @@ const routeTree = rootRoute.addChildren([
   myPeopleRoute,
   myTimelineRoute,
   settingsRoute,
-  profileRoute
+  profileRoute,
+  coPostsRoute,
 ])
 
 const router = createRouter({

@@ -121,3 +121,94 @@
     @apply bg-background text-foreground;
   }
 }
+
+/*
+  Quill editor serialises formatting as inline styles (e.g. background-color, color).
+  In dark mode these light colours create jarring white/light boxes around text.
+  The .quill-content wrapper is applied to every read-only post content block so we
+  can safely neutralise inline background and colour overrides there.
+*/
+.dark .quill-content [style*="background-color"] {
+  background-color: transparent !important;
+}
+.dark .quill-content [style*="color:"] {
+  color: inherit !important;
+}
+
+/* ── Quill Editor Dark Mode ──────────────────────────────────────────────────── */
+
+.dark .ql-toolbar.ql-snow {
+  background-color: var(--card);
+  border-color: var(--border);
+}
+
+.dark .ql-container.ql-snow {
+  background-color: var(--background);
+  border-color: var(--border);
+  color: var(--foreground);
+}
+
+.dark .ql-editor {
+  color: var(--foreground);
+}
+
+.dark .ql-editor.ql-blank::before {
+  color: var(--muted-foreground);
+}
+
+/* Toolbar icon strokes & fills */
+.dark .ql-toolbar .ql-stroke {
+  stroke: oklch(0.708 0 0);
+}
+.dark .ql-toolbar .ql-fill {
+  fill: oklch(0.708 0 0);
+}
+.dark .ql-toolbar .ql-picker {
+  color: oklch(0.708 0 0);
+}
+
+/* Hover / active toolbar icons */
+.dark .ql-toolbar button:hover .ql-stroke,
+.dark .ql-toolbar .ql-active .ql-stroke,
+.dark .ql-toolbar .ql-selected .ql-stroke {
+  stroke: var(--foreground);
+}
+.dark .ql-toolbar button:hover .ql-fill,
+.dark .ql-toolbar .ql-active .ql-fill,
+.dark .ql-toolbar .ql-selected .ql-fill {
+  fill: var(--foreground);
+}
+.dark .ql-toolbar button:hover,
+.dark .ql-toolbar .ql-active,
+.dark .ql-toolbar .ql-selected {
+  color: var(--foreground);
+}
+
+/* Picker dropdown options */
+.dark .ql-toolbar .ql-picker-options {
+  background-color: var(--popover);
+  border-color: var(--border);
+  color: var(--foreground);
+}
+.dark .ql-toolbar .ql-picker-item:hover,
+.dark .ql-toolbar .ql-picker-item.ql-selected {
+  color: var(--primary);
+}
+
+/* Picker label */
+.dark .ql-toolbar .ql-picker-label {
+  border-color: var(--border);
+}
+.dark .ql-toolbar .ql-picker-label:hover {
+  color: var(--foreground);
+}
+
+/* Code block and blockquote in dark mode */
+.dark .ql-editor blockquote {
+  border-left-color: var(--border);
+  color: var(--muted-foreground);
+}
+.dark .ql-editor pre.ql-syntax {
+  background-color: var(--muted);
+  color: var(--foreground);
+}

@@ -9,6 +9,7 @@ import MyPeople from '@/pages/MyPeople';
 import Settings from '@/pages/Settings';
 import Profile from '@/pages/Profile';
 import MyTimeline from '@/pages/MyTimeline';
+import CoPosts from '@/pages/CoPosts';
 
 function App() {
   return (
@@ -46,6 +47,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <MyTimeline />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/co-posts"
+            element={
+              <ProtectedRoute>
+                <CoPosts />
               </ProtectedRoute>
             }
           />

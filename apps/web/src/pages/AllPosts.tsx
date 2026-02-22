@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
+import { useSelector } from 'react-redux'
 import InfiniteScroll from 'react-infinite-scroll-component'
-import { format } from 'date-fns'
-import { Loader2, FileText, Trash2 } from 'lucide-react'
+import { Loader2, FileText, Trash2, Flag } from 'lucide-react'
 import { toast } from 'sonner'
 import { useGetPaginatedPostsQuery, useDeletePostMutation } from '@/api/postsApi'
 import type { Post } from '@/api/postsApi'
-import { MediaGallery } from '@/components/MediaGallery'
+import { PostCard } from '@/components/PostCard'
+import { MilestoneDialog } from '@/components/MilestoneDialog'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -15,6 +16,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { useGetPeopleQuery } from '@/api/peopleApi'
+import type { RootState } from '@/store'
 
 const LIMIT = 10
 
@@ -57,65 +60,6 @@ function BottomLoader() {
   )
 }
 
-// ── Single post card ───────────────────────────────────────────────────────────
-
-interface PostCardProps {
-  post: Post
-  onDeleteRequest: (id: string) => void
-}
-
-function PostCard({ post, onDeleteRequest }: PostCardProps) {
-  return (
-    <article className="rounded-lg border bg-card p-6 shadow-sm hover:shadow-md transition-shadow">
-      <div className="space-y-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <h3 className="text-xl font-semibold truncate">{post.title}</h3>
-            <time className="text-xs text-muted-foreground">
-              {format(new Date(post.date), 'MMMM d, yyyy')}
-              {' · '}
-              {format(new Date(post.createdAt), 'h:mm a')}
-            </time>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
-            onClick={() => onDeleteRequest(post.id)}
-            title="Delete post"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-
-        <div
-          className="prose prose-sm dark:prose-invert max-w-none line-clamp-4"
-          dangerouslySetInnerHTML={{ __html: post.content }}
-        />
-
-        {post.media && post.media.length > 0 && (
-          <div className="pt-2">
-            <MediaGallery media={post.media} />
-          </div>
-        )}
-
-        {post.tags && post.tags.length > 0 && (
-          <div className="flex flex-wrap gap-2 pt-1">
-            {post.tags.map((tag, i) => (
-              <span
-                key={i}
-                className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary"
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-    </article>
-  )
-}
-
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 export default function AllPosts() {
@@ -123,9 +67,13 @@ export default function AllPosts() {
   const [allPosts, setAllPosts] = useState<Post[]>([])
   const [hasMore, setHasMore] = useState(true)
   const [postToDelete, setPostToDelete] = useState<string | null>(null)
+  const [milestonePost, setMilestonePost] = useState<Post | null>(null)
+
+  const currentUserId = useSelector((state: RootState) => state.auth.user?.id)
 
   const { data, isLoading, isFetching } = useGetPaginatedPostsQuery({ page, limit: LIMIT })
   const [deletePost, { isLoading: isDeleting }] = useDeletePostMutation()
+  const { data: people } = useGetPeopleQuery()
 
   useEffect(() => {
     if (!data) return
@@ -144,13 +92,23 @@ export default function AllPosts() {
     try {
       await deletePost(postToDelete).unwrap()
       toast.success('Post deleted')
-      // Remove from local list immediately
       setAllPosts(prev => prev.filter(p => p.id !== postToDelete))
       setPostToDelete(null)
     } catch {
       toast.error('Failed to delete post. Please try again.')
     }
   }
+
+  const handleMilestoneSaved = (postId: string, label?: string) => {
+    setAllPosts(prev => prev.map(p => {
+      if (p.id !== postId) return p
+      if (!label) return { ...p, milestone: undefined }
+      return { ...p, milestone: { ...p.milestone, id: p.milestone?.id ?? '', postId, label, createdBy: '', createdAt: '' } }
+    }))
+    setMilestonePost(null)
+  }
+
+  const acceptedPeople = people?.accepted ?? []
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 pb-12">
@@ -190,7 +148,35 @@ export default function AllPosts() {
           className="space-y-4 !overflow-visible"
         >
           {allPosts.map(post => (
-            <PostCard key={post.id} post={post} onDeleteRequest={setPostToDelete} />
+            <PostCard
+              key={post.id}
+              post={post}
+              lineClamp={4}
+              actions={
+                <>
+                  {post.userId === currentUserId && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={`h-8 w-8 shrink-0 ${post.milestone ? 'text-amber-500' : 'text-muted-foreground hover:text-amber-500'}`}
+                      onClick={() => setMilestonePost(post)}
+                      title={post.milestone ? 'Edit milestone' : 'Mark as milestone'}
+                    >
+                      <Flag className="h-4 w-4" />
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+                    onClick={() => setPostToDelete(post.id)}
+                    title="Delete post"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </>
+              }
+            />
           ))}
         </InfiniteScroll>
       )}
@@ -214,6 +200,20 @@ export default function AllPosts() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Milestone dialog */}
+      {milestonePost && (
+        <MilestoneDialog
+          open={!!milestonePost}
+          onOpenChange={(open) => { if (!open) setMilestonePost(null) }}
+          postId={milestonePost.id}
+          isCoPost={milestonePost.isCoPost}
+          coAuthorId={milestonePost.coAuthorId}
+          existing={milestonePost.milestone}
+          people={acceptedPeople}
+          onSaved={(label) => handleMilestoneSaved(milestonePost.id, label)}
+        />
+      )}
     </div>
   )
 }
